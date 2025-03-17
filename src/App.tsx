@@ -1,5 +1,7 @@
+import { BottomSheet } from '@alfalab/core-components/bottom-sheet';
 import { ButtonMobile } from '@alfalab/core-components/button/mobile';
 import { CalendarMobile } from '@alfalab/core-components/calendar/mobile';
+import { Checkbox } from '@alfalab/core-components/checkbox';
 import { Gap } from '@alfalab/core-components/gap';
 import { Input } from '@alfalab/core-components/input';
 import { SelectMobile } from '@alfalab/core-components/select/mobile';
@@ -7,6 +9,7 @@ import { Switch } from '@alfalab/core-components/switch';
 import { Tag } from '@alfalab/core-components/tag';
 import { Typography } from '@alfalab/core-components/typography';
 import { CalendarMIcon } from '@alfalab/icons-glyph/CalendarMIcon';
+import { ChevronRightMIcon } from '@alfalab/icons-glyph/ChevronRightMIcon';
 import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -14,10 +17,16 @@ import rubIcon from './assets/rub.png';
 import { LS, LSKeys } from './ls';
 import { appSt } from './style.css';
 import { ThxSpinner } from './thx/ThxLayout';
+
 const min = 2000;
 const max = 3_000_000;
 
 const chips = [2000, 5000, 15000, 25000];
+const chipsIncome = ['До 80 000 ₽', '80 001 ₽ – 150 000 ₽', '150 001 ₽ и более'];
+
+const addSome = 36_000;
+const sduiLink =
+  'alfabank://sdui_screen?screenName=InvestmentLongread&fromCurrent=true&endpoint=v1/invest-main-screen-view/investment-longread/45034%3flocation=AM%26campaignCode=GH';
 
 type OptionKey = 'per_month' | 'per_week' | 'per_quarter' | 'per_annual';
 
@@ -37,7 +46,8 @@ export const App = () => {
   const [autoSum, setAutoSum] = useState('');
   const [perItem, setPerItem] = useState<OptionKey>('per_month');
   const [thxShow, setThx] = useState(LS.getItem(LSKeys.ShowThx, false));
-  const [openBs, setOpenBs] = useState(false);
+  const [openCalendar, setOpenCalendar] = useState(false);
+  const [openCalc, setOpenCalc] = useState(false);
   const [payDate, setPayDate] = useState(dayjs().add(1, 'month').toDate().toISOString());
 
   useEffect(() => {
@@ -107,6 +117,10 @@ export const App = () => {
     }
   };
 
+  const goToSdui = () => {
+    window.location.replace(sduiLink);
+  };
+
   if (thxShow) {
     return <ThxSpinner />;
   }
@@ -157,6 +171,26 @@ export const App = () => {
           </Swiper>
         </div>
 
+        <div className={appSt.boxGreen} onClick={goToSdui}>
+          <Typography.Text view="secondary-medium">
+            {Number(sum) >= addSome ? (
+              'Условия выполнены. После пополнения вам начислят кэшбэк в подарок'
+            ) : sum ? (
+              <>
+                Пополните еще на <span style={{ fontWeight: 700 }}>{(addSome - Number(sum)).toLocaleString('ru')} ₽</span> –
+                получите кэшбэк в подарок. Действует до 15.04
+              </>
+            ) : (
+              <>
+                Пополните на <span style={{ fontWeight: 700 }}>{addSome.toLocaleString('ru')}</span> – получите кэшбэк в
+                подарок. Действует до 15.04
+              </>
+            )}
+          </Typography.Text>
+
+          <ChevronRightMIcon />
+        </div>
+
         <Switch
           block
           reversed
@@ -196,7 +230,7 @@ export const App = () => {
               onClick={e => {
                 e.preventDefault();
                 e.stopPropagation();
-                setOpenBs(true);
+                setOpenCalendar(true);
               }}
             />
           </>
@@ -205,6 +239,17 @@ export const App = () => {
       <Gap size={96} />
 
       <div className={appSt.bottomBtn}>
+        <div className={appSt.btmRow} onClick={() => setOpenCalc(true)}>
+          <div>
+            <Typography.Text view="primary-small" color="secondary" tag="p" defaultMargins={false}>
+              Примерный доход через 15 лет
+            </Typography.Text>
+            <Typography.Text view="primary-medium" weight="medium">
+              X ₽
+            </Typography.Text>
+          </div>
+          <ChevronRightMIcon color="#898991" />
+        </div>
         <ButtonMobile loading={loading} block view="primary" onClick={submit}>
           Продолжить
         </ButtonMobile>
@@ -214,12 +259,98 @@ export const App = () => {
         value={payDate ? dayjs(payDate).toDate().getTime() : undefined}
         selectorView={'full'}
         yearsAmount={2}
-        onClose={() => setOpenBs(false)}
-        open={openBs}
+        onClose={() => setOpenCalendar(false)}
+        open={openCalendar}
         minDate={dayjs().toDate().getTime()}
         maxDate={dayjs().add(2, 'year').toDate().getTime()}
         onChange={date => setPayDate(dayjs(date).toDate().toISOString())}
       />
+
+      <BottomSheet
+        title={
+          <Typography.Title tag="h2" view="small" font="system" weight="semibold">
+            Калькулятор дохода за 15 лет
+          </Typography.Title>
+        }
+        open={openCalc}
+        onClose={() => setOpenCalc(false)}
+        titleAlign="left"
+        stickyHeader
+        hasCloser
+        contentClassName={appSt.btmContent}
+        actionButton={
+          <ButtonMobile block view="primary" onClick={() => setOpenCalc(false)}>
+            Понятно
+          </ButtonMobile>
+        }
+      >
+        <div className={appSt.container}>
+          <div>
+            <Typography.Text view="primary-small" color="secondary" tag="p" defaultMargins={false}>
+              Ежемесячный доход
+            </Typography.Text>
+
+            <Swiper spaceBetween={12} slidesPerView="auto" style={{ marginTop: '12px' }}>
+              {chipsIncome.map(chip => (
+                <SwiperSlide key={chip} className={appSt.swSlide}>
+                  <Tag view="filled" size="xxs" shape="rectangular">
+                    {chip}
+                  </Tag>
+                </SwiperSlide>
+              ))}
+            </Swiper>
+          </div>
+
+          <Input
+            hint="От 2000 ₽"
+            type="number"
+            label="Первоначальный взнос"
+            labelView="outer"
+            block
+            placeholder="72 000 ₽"
+          />
+          <Input type="number" label="Взносы в месяц" labelView="outer" block placeholder="6000 ₽" />
+
+          <Checkbox block={true} size={24} label="Инвестировать налоговый вычет в программу " />
+
+          <div className={appSt.box}>
+            <div style={{ marginBottom: '15px' }}>
+              <Typography.TitleResponsive tag="h3" view="medium" font="system" weight="semibold">
+                3 640 123 ₽
+              </Typography.TitleResponsive>
+
+              <Typography.Text view="primary-small" color="secondary">
+                Накопите к 2040 году
+              </Typography.Text>
+            </div>
+
+            <div className={appSt.btmRowCalc}>
+              <Typography.Text view="secondary-large" color="secondary">
+                Доход от инвестиций
+              </Typography.Text>
+              <Typography.Text view="primary-small">2 003 083 ₽</Typography.Text>
+            </div>
+            <div className={appSt.btmRowCalc}>
+              <Typography.Text view="secondary-large" color="secondary">
+                Государство добавит
+              </Typography.Text>
+              <Typography.Text view="primary-small">360 000 ₽</Typography.Text>
+            </div>
+            <div className={appSt.btmRowCalc}>
+              <Typography.Text view="secondary-large" color="secondary">
+                Налоговые вычеты добавят
+              </Typography.Text>
+              <Typography.Text view="primary-small">140 400 ₽</Typography.Text>
+            </div>
+            <div className={appSt.btmRowCalc}>
+              <Typography.Text view="secondary-large" color="secondary">
+                Взносы за 15 лет
+              </Typography.Text>
+              <Typography.Text view="primary-small">1 146 000 ₽</Typography.Text>
+            </div>
+          </div>
+        </div>
+      </BottomSheet>
     </>
   );
 };
