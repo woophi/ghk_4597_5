@@ -17,12 +17,56 @@ import rubIcon from './assets/rub.png';
 import { LS, LSKeys } from './ls';
 import { appSt } from './style.css';
 import { ThxSpinner } from './thx/ThxLayout';
+import { sendDataToGA, sendDataToGACalc } from './utils/events';
+import { round } from './utils/round';
 
 const min = 2000;
 const max = 3_000_000;
 
 const chips = [2000, 5000, 15000, 25000];
-const chipsIncome = ['До 80 000 ₽', '80 001 ₽ – 150 000 ₽', '150 001 ₽ и более'];
+const chipsIncome = [
+  {
+    title: 'До 80 000 ₽',
+    value: 80_000,
+  },
+  {
+    title: '80 001 ₽ – 150 000 ₽',
+    value: 150_000,
+  },
+  {
+    title: '150 001 ₽ и более',
+    value: 150_001,
+  },
+];
+
+const MAX_GOV_SUPPORT = 360000;
+const TAX = 0.13;
+const INVEST_DURATION = 15;
+const INTEREST_RATE = 0.07;
+
+function calculateSumContributions(monthlyPayment: number): number {
+  return round(monthlyPayment * 12 * INVEST_DURATION, 2);
+}
+function calculateStateSupport(monthlyPayment: number, subsidyRate: number): number {
+  const support = monthlyPayment * subsidyRate * 10 * 12;
+  return round(Math.min(support, MAX_GOV_SUPPORT), 2);
+}
+function calculateInvestmentIncome(
+  firstDeposit: number,
+  monthlyPayment: number,
+  subsidyRate: number,
+  interestRate: number,
+): number {
+  const annualPayment = monthlyPayment * 12;
+  const adjustedPayment = Math.min(firstDeposit, monthlyPayment * subsidyRate * 12);
+  return round(
+    ((annualPayment + adjustedPayment) * (Math.pow(1 + interestRate, INVEST_DURATION) - 1)) / (interestRate * 2),
+    2,
+  );
+}
+function calculateTaxRefund(monthlyPayment: number, taxRate: number): number {
+  return round(monthlyPayment * taxRate * INVEST_DURATION * 12, 2);
+}
 
 const addSome = 36_000;
 const sduiLink =
@@ -49,8 +93,37 @@ export const App = () => {
   const [openCalendar, setOpenCalendar] = useState(false);
   const [openCalc, setOpenCalc] = useState(false);
   const [payDate, setPayDate] = useState(dayjs().add(1, 'month').toDate().toISOString());
+  const [calcData, setCalcData] = useState<{
+    incomeValue: number;
+    firstDeposit: number;
+    monthlyDeposit: number;
+    taxInvest: boolean;
+  }>({
+    firstDeposit: 72_000,
+    incomeValue: 80_000,
+    monthlyDeposit: 6_000,
+    taxInvest: false,
+  });
+  const subsidyRate = calcData.incomeValue === 80_000 ? 1 : calcData.incomeValue === 150_000 ? 0.5 : 0.25;
+  const deposit15years = calculateSumContributions(calcData.monthlyDeposit);
+  const taxRefund = calculateTaxRefund(calcData.monthlyDeposit, TAX);
+  const govCharity = calculateStateSupport(calcData.monthlyDeposit, subsidyRate);
+  const investmentsIncome = calculateInvestmentIncome(
+    calcData.firstDeposit,
+    calcData.monthlyDeposit,
+    subsidyRate,
+    INTEREST_RATE,
+  );
+  const total = investmentsIncome + govCharity + (calcData.taxInvest ? taxRefund : 0) + deposit15years;
 
   useEffect(() => {
+    if (!LS.getItem(LSKeys.UserId, null)) {
+      LS.setItem(LSKeys.UserId, Date.now());
+    }
+  }, []);
+
+  useEffect(() => {
+    setCalcData(d => ({ ...d, monthlyDeposit: Number(sum) }));
     setAutoSum(sum);
   }, [sum]);
 
@@ -79,15 +152,20 @@ export const App = () => {
       setError('Введите сумму взноса');
       return;
     }
-    if (!autoSum) {
+    if (checked && !autoSum) {
       setErrorAutomSum('Введите сумму автоплатежа');
       return;
     }
 
-    setLoading(true);
-    // LS.setItem(LSKeys.ShowThx, true);
-    setThx(true);
-    setLoading(false);
+    sendDataToGA({
+      auto: checked ? `[${perItem.replace('per_', '')},${autoSum}]` : '[]',
+      sum: Number(sum),
+      id: LS.getItem(LSKeys.UserId, 0) as number,
+    }).then(() => {
+      // LS.setItem(LSKeys.ShowThx, true);
+      setThx(true);
+      setLoading(false);
+    });
   };
 
   const handleChangeInput = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -117,8 +195,49 @@ export const App = () => {
     }
   };
 
+  const handleBlurInputCalc1 = () => {
+    const value = Number(sum);
+
+    if (value < min) {
+      setCalcData({ ...calcData, firstDeposit: min });
+      return;
+    }
+  };
+
+  const handleBlurInputCalc2 = () => {
+    const value = Number(sum);
+
+    if (value < min) {
+      setCalcData({ ...calcData, monthlyDeposit: min });
+      return;
+    }
+    if (value > max) {
+      setCalcData({ ...calcData, monthlyDeposit: max });
+      return;
+    }
+  };
+
   const goToSdui = () => {
+    window.gtag('event', 'inf_4597_var5');
     window.location.replace(sduiLink);
+  };
+
+  const handleOpenCalc = () => {
+    window.gtag('event', 'calc_4597_var5');
+    setOpenCalc(true);
+  };
+
+  const handleCloseCalc = () => {
+    setOpenCalc(false);
+    sendDataToGACalc({
+      id: LS.getItem(LSKeys.UserId, 0) as number,
+      calc: `${calcData.incomeValue},${calcData.firstDeposit},${calcData.monthlyDeposit},${calcData.taxInvest ? 'T' : 'F'}`,
+    });
+  };
+
+  const handleSwitchToggle = () => {
+    window.gtag('event', 'switch_4597_var5');
+    setChecked(prevState => !prevState);
   };
 
   if (thxShow) {
@@ -191,13 +310,7 @@ export const App = () => {
           <ChevronRightMIcon />
         </div>
 
-        <Switch
-          block
-          reversed
-          checked={checked}
-          label="Пополнять регулярно"
-          onChange={() => setChecked(prevState => !prevState)}
-        />
+        <Switch block reversed checked={checked} label="Пополнять регулярно" onChange={handleSwitchToggle} />
 
         {checked && (
           <>
@@ -239,13 +352,13 @@ export const App = () => {
       <Gap size={96} />
 
       <div className={appSt.bottomBtn}>
-        <div className={appSt.btmRow} onClick={() => setOpenCalc(true)}>
+        <div className={appSt.btmRow} onClick={handleOpenCalc}>
           <div>
             <Typography.Text view="primary-small" color="secondary" tag="p" defaultMargins={false}>
               Примерный доход через 15 лет
             </Typography.Text>
             <Typography.Text view="primary-medium" weight="medium">
-              X ₽
+              {sum ? total.toLocaleString('ru') : 'X'} ₽
             </Typography.Text>
           </div>
           <ChevronRightMIcon color="#898991" />
@@ -273,13 +386,13 @@ export const App = () => {
           </Typography.Title>
         }
         open={openCalc}
-        onClose={() => setOpenCalc(false)}
+        onClose={handleCloseCalc}
         titleAlign="left"
         stickyHeader
         hasCloser
         contentClassName={appSt.btmContent}
         actionButton={
-          <ButtonMobile block view="primary" onClick={() => setOpenCalc(false)}>
+          <ButtonMobile block view="primary" onClick={handleCloseCalc}>
             Понятно
           </ButtonMobile>
         }
@@ -292,9 +405,15 @@ export const App = () => {
 
             <Swiper spaceBetween={12} slidesPerView="auto" style={{ marginTop: '12px' }}>
               {chipsIncome.map(chip => (
-                <SwiperSlide key={chip} className={appSt.swSlide}>
-                  <Tag view="filled" size="xxs" shape="rectangular">
-                    {chip}
+                <SwiperSlide key={chip.value} className={appSt.swSlide}>
+                  <Tag
+                    view="filled"
+                    size="xxs"
+                    shape="rectangular"
+                    checked={calcData.incomeValue === chip.value}
+                    onClick={() => setCalcData({ ...calcData, incomeValue: chip.value })}
+                  >
+                    {chip.title}
                   </Tag>
                 </SwiperSlide>
               ))}
@@ -308,15 +427,33 @@ export const App = () => {
             labelView="outer"
             block
             placeholder="72 000 ₽"
+            value={calcData.firstDeposit.toString()}
+            onChange={e => setCalcData({ ...calcData, firstDeposit: Number(e.target.value) })}
+            onBlur={handleBlurInputCalc1}
           />
-          <Input type="number" label="Взносы в месяц" labelView="outer" block placeholder="6000 ₽" />
+          <Input
+            type="number"
+            label="Взносы в месяц"
+            labelView="outer"
+            block
+            placeholder="6000 ₽"
+            value={calcData.monthlyDeposit.toString()}
+            onChange={e => setCalcData({ ...calcData, monthlyDeposit: Number(e.target.value) })}
+            onBlur={handleBlurInputCalc2}
+          />
 
-          <Checkbox block={true} size={24} label="Инвестировать налоговый вычет в программу " />
+          <Checkbox
+            block={true}
+            size={24}
+            label="Инвестировать налоговый вычет в программу"
+            checked={calcData.taxInvest}
+            onChange={() => setCalcData({ ...calcData, taxInvest: !calcData.taxInvest })}
+          />
 
           <div className={appSt.box}>
             <div style={{ marginBottom: '15px' }}>
               <Typography.TitleResponsive tag="h3" view="medium" font="system" weight="semibold">
-                3 640 123 ₽
+                {total.toLocaleString('ru')} ₽
               </Typography.TitleResponsive>
 
               <Typography.Text view="primary-small" color="secondary">
@@ -328,25 +465,27 @@ export const App = () => {
               <Typography.Text view="secondary-large" color="secondary">
                 Доход от инвестиций
               </Typography.Text>
-              <Typography.Text view="primary-small">2 003 083 ₽</Typography.Text>
+              <Typography.Text view="primary-small">{investmentsIncome.toLocaleString('ru')} ₽</Typography.Text>
             </div>
             <div className={appSt.btmRowCalc}>
               <Typography.Text view="secondary-large" color="secondary">
                 Государство добавит
               </Typography.Text>
-              <Typography.Text view="primary-small">360 000 ₽</Typography.Text>
+              <Typography.Text view="primary-small">{govCharity.toLocaleString('ru')} ₽</Typography.Text>
             </div>
-            <div className={appSt.btmRowCalc}>
-              <Typography.Text view="secondary-large" color="secondary">
-                Налоговые вычеты добавят
-              </Typography.Text>
-              <Typography.Text view="primary-small">140 400 ₽</Typography.Text>
-            </div>
+            {calcData.taxInvest && (
+              <div className={appSt.btmRowCalc}>
+                <Typography.Text view="secondary-large" color="secondary">
+                  Налоговые вычеты добавят
+                </Typography.Text>
+                <Typography.Text view="primary-small">{taxRefund.toLocaleString('ru')} ₽</Typography.Text>
+              </div>
+            )}
             <div className={appSt.btmRowCalc}>
               <Typography.Text view="secondary-large" color="secondary">
                 Взносы за 15 лет
               </Typography.Text>
-              <Typography.Text view="primary-small">1 146 000 ₽</Typography.Text>
+              <Typography.Text view="primary-small">{deposit15years.toLocaleString('ru')} ₽</Typography.Text>
             </div>
           </div>
         </div>
