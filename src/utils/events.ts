@@ -51,7 +51,7 @@ export const sendDataToGACalc = async (payload: CalcPayload) => {
       {
         redirect: 'follow',
         method: 'POST',
-        body: JSON.stringify({ date, ...payload, var: 'var3' }),
+        body: JSON.stringify({ date, ...payload, var: 'var5' }),
         headers: {
           'Content-Type': 'text/plain;charset=utf-8',
         },
