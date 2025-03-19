@@ -9,6 +9,7 @@ const bottomBtn = style({
   display: 'flex',
   flexDirection: 'column',
   gap: '.5rem',
+  backgroundColor: '#fff',
 });
 
 const container = style({
