@@ -43,9 +43,8 @@ const MAX_GOV_SUPPORT = 360000;
 const TAX = 0.13;
 const INVEST_DURATION = 15;
 const INTEREST_RATE = 0.07;
-
-function calculateSumContributions(monthlyPayment: number): number {
-  return round(monthlyPayment * 12 * INVEST_DURATION, 2);
+function calculateSumContributions(monthlyPayment: number, additionalContribution: number): number {
+  return round(additionalContribution + monthlyPayment * 11 + monthlyPayment * 12 * (INVEST_DURATION - 1), 2);
 }
 function calculateStateSupport(monthlyPayment: number, subsidyRate: number): number {
   const support = monthlyPayment * subsidyRate * 10 * 12;
@@ -60,12 +59,13 @@ function calculateInvestmentIncome(
   const annualPayment = monthlyPayment * 12;
   const adjustedPayment = Math.min(firstDeposit, monthlyPayment * subsidyRate * 12);
   return round(
-    ((annualPayment + adjustedPayment) * (Math.pow(1 + interestRate, INVEST_DURATION) - 1)) / (interestRate * 2),
+    ((annualPayment + adjustedPayment + firstDeposit) * (Math.pow(1 + interestRate, INVEST_DURATION) - 1)) /
+      (interestRate * 2),
     2,
   );
 }
-function calculateTaxRefund(monthlyPayment: number, taxRate: number): number {
-  return round(monthlyPayment * taxRate * INVEST_DURATION * 12, 2);
+function calculateTaxRefund(sumContributions: number, taxRate: number): number {
+  return round(sumContributions * taxRate, 2);
 }
 
 const addSome = 36_000;
@@ -83,7 +83,7 @@ const OPTIONS = [
 
 export const App = () => {
   const [loading, setLoading] = useState(false);
-  const [checked, setChecked] = useState(false);
+  const [checked, setChecked] = useState(true);
   const [error, setError] = useState('');
   const [errorAutoSum, setErrorAutomSum] = useState('');
   const [sum, setSum] = useState('');
@@ -105,8 +105,8 @@ export const App = () => {
     taxInvest: false,
   });
   const subsidyRate = calcData.incomeValue === 80_000 ? 1 : calcData.incomeValue === 150_000 ? 0.5 : 0.25;
-  const deposit15years = calculateSumContributions(calcData.monthlyDeposit);
-  const taxRefund = calculateTaxRefund(calcData.monthlyDeposit, TAX);
+  const deposit15years = calculateSumContributions(calcData.monthlyDeposit, calcData.firstDeposit);
+  const taxRefund = calculateTaxRefund(deposit15years, TAX);
   const govCharity = calculateStateSupport(calcData.monthlyDeposit, subsidyRate);
   const investmentsIncome = calculateInvestmentIncome(
     calcData.firstDeposit,
@@ -123,9 +123,12 @@ export const App = () => {
   }, []);
 
   useEffect(() => {
-    setCalcData(d => ({ ...d, monthlyDeposit: Number(sum) }));
-    setAutoSum(sum);
+    setCalcData(d => ({ ...d, firstDeposit: Number(sum) }));
   }, [sum]);
+
+  useEffect(() => {
+    setCalcData(d => ({ ...d, monthlyDeposit: Number(autoSum) }));
+  }, [autoSum]);
 
   useEffect(() => {
     switch (perItem) {
@@ -266,7 +269,7 @@ export const App = () => {
         </div>
 
         <Input
-          hint="От 2000 до 3 000 000 ₽"
+          hint="От 2 000 до 3 000 000 ₽"
           type="number"
           min={min}
           max={max}
@@ -423,9 +426,9 @@ export const App = () => {
           </div>
 
           <Input
-            hint="От 2000 ₽"
+            hint="От 2 000 ₽"
             type="number"
-            label="Первоначальный взнос"
+            label="Сумма первоначального взноса"
             labelView="outer"
             block
             placeholder="72 000 ₽"
@@ -436,7 +439,7 @@ export const App = () => {
           />
           <Input
             type="number"
-            label="Взносы в месяц"
+            label="Сумма автоплатежа"
             labelView="outer"
             block
             placeholder="6000 ₽"
