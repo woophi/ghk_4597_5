@@ -137,9 +137,12 @@ export const App = () => {
         break;
       case 'per_week':
         setPayDate(dayjs().add(1, 'week').toDate().toISOString());
+        setCalcData(d => ({ ...d, monthlyDeposit: Number(autoSum) * 4 }));
+
         break;
       case 'per_quarter':
         setPayDate(dayjs().add(3, 'month').toDate().toISOString());
+        setCalcData(d => ({ ...d, monthlyDeposit: round(Number(autoSum) / 3, 2) }));
         break;
       case 'per_annual':
         setPayDate(dayjs().add(1, 'year').toDate().toISOString());
