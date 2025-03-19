@@ -134,6 +134,8 @@ export const App = () => {
     switch (perItem) {
       case 'per_month':
         setPayDate(dayjs().add(1, 'month').toDate().toISOString());
+        setCalcData(d => ({ ...d, monthlyDeposit: Number(autoSum) }));
+
         break;
       case 'per_week':
         setPayDate(dayjs().add(1, 'week').toDate().toISOString());
@@ -146,6 +148,8 @@ export const App = () => {
         break;
       case 'per_annual':
         setPayDate(dayjs().add(1, 'year').toDate().toISOString());
+        setCalcData(d => ({ ...d, monthlyDeposit: Number(autoSum) }));
+
         break;
 
       default:
