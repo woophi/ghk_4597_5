@@ -87,8 +87,8 @@ export const App = () => {
   const [checked, setChecked] = useState(true);
   const [error, setError] = useState('');
   const [errorAutoSum, setErrorAutomSum] = useState('');
-  const [sum, setSum] = useState('');
-  const [autoSum, setAutoSum] = useState('');
+  const [sum, setSum] = useState('2000');
+  const [autoSum, setAutoSum] = useState('500');
   const [perItem, setPerItem] = useState<OptionKey>('per_month');
   const [thxShow, setThx] = useState(LS.getItem(LSKeys.ShowThx, false));
   const [openCalendar, setOpenCalendar] = useState(false);
@@ -100,9 +100,9 @@ export const App = () => {
     monthlyDeposit: number;
     taxInvest: boolean;
   }>({
-    firstDeposit: 72_000,
+    firstDeposit: 2_000,
     incomeValue: 80_000,
-    monthlyDeposit: 6_000,
+    monthlyDeposit: 500,
     taxInvest: false,
   });
   const subsidyRate = calcData.incomeValue === 80_000 ? 1 : calcData.incomeValue === 150_000 ? 0.5 : 0.25;
