@@ -71,7 +71,7 @@ function calculateTaxRefund(sumContributions: number, taxRate: number): number {
 
 const addSome = 36_000;
 const sduiLink =
-  'alfabank://sdui_screen?screenName=InvestmentLongread&fromCurrent=true&endpoint=v1/invest-main-screen-view/investment-longread/45411%3flocation=GH%26campaignCode=AM_calc';
+  'alfabank://sdui_screen?screenName=InvestmentLongread&fromCurrent=true&endpoint=v1/invest-main-screen-view/investment-longread/47042%3flocation=AM%26campaignCode=GH';
 
 type OptionKey = 'per_month' | 'per_week' | 'per_quarter' | 'per_annual';
 
@@ -309,12 +309,12 @@ export const App = () => {
             ) : sum ? (
               <>
                 Пополните еще на <span style={{ fontWeight: 700 }}>{(addSome - Number(sum)).toLocaleString('ru')} ₽</span> –
-                получите кэшбэк в подарок. Действует до 15.04
+                участвуйте в розыгрыше и получите призы. Действует до 15.04
               </>
             ) : (
               <>
-                Пополните на <span style={{ fontWeight: 700 }}>{addSome.toLocaleString('ru')}</span> – получите кэшбэк в
-                подарок. Действует до 15.04
+                Пополните на <span style={{ fontWeight: 700 }}>{addSome.toLocaleString('ru')}</span> – участвуйте в розыгрыше
+                и получите призы. Действует до 15.04
               </>
             )}
           </Typography.Text>
