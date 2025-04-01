@@ -362,7 +362,7 @@ export const App = () => {
           </>
         )}
       </div>
-      <Gap size={96} />
+      <Gap size={256} />
 
       <div className={appSt.bottomBtn}>
         <div className={appSt.btmRow} onClick={handleOpenCalc}>
